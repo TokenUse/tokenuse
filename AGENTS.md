@@ -41,3 +41,10 @@ Source implementation lives in sibling repos (`tokenuse-cli`, `tokenuse-npm`, `t
 - Docs and links are correct.
 - No stale references to renamed repos or commands.
 - Changes are minimal and scoped.
+
+## AGENTS Hooks
+
+- Install local hooks: `bash scripts/setup-git-hooks.sh`
+- Pre-commit guard: `.githooks/pre-commit` -> `devops/agents/verify-agents.sh --staged`
+- CI guard: `.github/workflows/agents-guard.yml`
+- Temporary bypass (rare): `SKIP_AGENTS_GUARD=1 git commit -m "..."`
