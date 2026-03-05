@@ -16,7 +16,9 @@ brew install tokenuse
 ```bash
 npx tokenuse@latest
 # or
-npm install -g tokenuse
+npm install -g tokenuse@latest
+# verify
+tokenuse version
 ```
 
 ### curl (macOS/Linux)
