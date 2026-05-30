@@ -1,6 +1,6 @@
 # TokenUse CLI
 
-Track and analyze Claude Code usage.
+Track and analyze Claude Code and Codex usage.
 
 ## Installation
 
@@ -39,6 +39,10 @@ tokenuse status
 # Sign out
 tokenuse logout
 ```
+
+## Privacy
+
+TokenUse tracks usage metadata and, **on by default**, the text of the prompts you run and the paths they ran in, to power per-prompt analytics. Detected secrets are scrubbed on a best-effort basis before upload; prompts are retained per your retention setting and deleted on request. We never collect model responses or your file contents. Turn prompt capture off anytime with `tokenuse config set prompts.enabled=false` or in the dashboard under Settings → Data.
 
 ## Documentation
 
