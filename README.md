@@ -24,7 +24,7 @@ tokenuse version
 ### curl (macOS/Linux)
 
 ```bash
-curl -fsSL https://get.tokenuse.ai | bash
+curl -fsSL https://raw.githubusercontent.com/tokenuse/tokenuse/main/install.sh | bash
 ```
 
 ## Usage
@@ -46,7 +46,7 @@ TokenUse tracks usage metadata and, **on by default**, the text of the prompts y
 
 ## Documentation
 
-Visit [docs.tokenuse.ai](https://docs.tokenuse.ai) for full documentation.
+Visit the [documentation](https://github.com/tokenuse/tokenuse-cli#readme) for full details.
 
 ## Support
 
