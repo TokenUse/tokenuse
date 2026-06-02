@@ -86,26 +86,33 @@ download_binary() {
     # Download tarball
     curl -fsSL "$DOWNLOAD_URL" -o "$TMP_DIR/tokenuse.tar.gz"
 
-    # Download checksums
-    curl -fsSL "$CHECKSUM_URL" -o "$TMP_DIR/checksums.txt"
-
-    # Verify checksum
-    info "Verifying checksum..."
-    EXPECTED_CHECKSUM=$(grep "tokenuse_${VERSION}_${PLATFORM}.tar.gz" "$TMP_DIR/checksums.txt" | awk '{print $1}')
-
-    if [ -z "$EXPECTED_CHECKSUM" ]; then
-        warn "Checksum not found, skipping verification"
+    # Verify checksum (fail-closed: any failure aborts the install, mirroring the
+    # npm installer). Escape hatch for offline/dev only: set TOKENUSE_SKIP_CHECKSUM=1
+    # to bypass (default off).
+    if [ "${TOKENUSE_SKIP_CHECKSUM:-}" = "1" ]; then
+        warn "TOKENUSE_SKIP_CHECKSUM=1 set, skipping checksum verification (insecure)"
     else
+        info "Verifying checksum..."
+
+        # A missing/unreachable checksums file must abort — never install unverified.
+        if ! curl -fsSL "$CHECKSUM_URL" -o "$TMP_DIR/checksums.txt"; then
+            error "Could not download checksums for v$VERSION from $CHECKSUM_URL.\nRefusing to install an unverified binary. Set TOKENUSE_SKIP_CHECKSUM=1 to override (insecure)."
+        fi
+
+        EXPECTED_CHECKSUM=$(grep "tokenuse_${VERSION}_${PLATFORM}.tar.gz" "$TMP_DIR/checksums.txt" | awk '{print $1}')
+        if [ -z "$EXPECTED_CHECKSUM" ]; then
+            error "No checksum entry for tokenuse_${VERSION}_${PLATFORM}.tar.gz in checksums.txt.\nRefusing to install an unverified binary. Set TOKENUSE_SKIP_CHECKSUM=1 to override (insecure)."
+        fi
+
         if command -v sha256sum &> /dev/null; then
             ACTUAL_CHECKSUM=$(sha256sum "$TMP_DIR/tokenuse.tar.gz" | awk '{print $1}')
         elif command -v shasum &> /dev/null; then
             ACTUAL_CHECKSUM=$(shasum -a 256 "$TMP_DIR/tokenuse.tar.gz" | awk '{print $1}')
         else
-            warn "sha256sum not found, skipping verification"
-            ACTUAL_CHECKSUM=""
+            error "No sha256 tool (sha256sum/shasum) available to verify the download.\nRefusing to install an unverified binary. Set TOKENUSE_SKIP_CHECKSUM=1 to override (insecure)."
         fi
 
-        if [ -n "$ACTUAL_CHECKSUM" ] && [ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]; then
+        if [ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]; then
             error "Checksum verification failed!\nExpected: $EXPECTED_CHECKSUM\nActual: $ACTUAL_CHECKSUM"
         fi
         info "Checksum verified"
