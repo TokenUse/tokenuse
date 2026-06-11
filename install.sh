@@ -1,13 +1,21 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # TokenUse CLI Installer
 # Usage: curl -fsSL https://raw.githubusercontent.com/tokenuse/tokenuse/main/install.sh | bash
 
-VERSION="${TOKENUSE_VERSION:-latest}"
-INSTALL_DIR="${TOKENUSE_INSTALL_DIR:-$HOME/.local/bin}"
 GITHUB_REPO="tokenuse/tokenuse"
 DOWNLOAD_BASE="https://github.com/$GITHUB_REPO/releases"
+VERSION="${TOKENUSE_VERSION:-latest}"
+if [ -n "${TOKENUSE_INSTALL_DIR:-}" ]; then
+    INSTALL_DIR="$TOKENUSE_INSTALL_DIR"
+else
+    if [ -z "${HOME:-}" ]; then
+        echo "error: HOME is not set and TOKENUSE_INSTALL_DIR was not provided" >&2
+        exit 1
+    fi
+    INSTALL_DIR="$HOME/.local/bin"
+fi
 
 # Colors
 RED='\033[0;31m'
@@ -30,12 +38,16 @@ error() {
 
 # Detect OS and architecture
 detect_platform() {
-    OS=$(uname -s | tr '[:upper:]' '[:lower:]')
-    ARCH=$(uname -m)
+    OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
+    ARCH="$(uname -m)"
 
     case "$OS" in
         darwin)
             OS="darwin"
+            if { [ "$ARCH" = "x86_64" ] || [ "$ARCH" = "amd64" ]; } && [ "$(sysctl -n sysctl.proc_translated 2>/dev/null || true)" = "1" ]; then
+                ARCH="arm64"
+                info "Rosetta translation detected; selecting darwin_arm64 binary"
+            fi
             ;;
         linux)
             OS="linux"
@@ -64,7 +76,8 @@ detect_platform() {
 # Get the latest version from GitHub
 get_latest_version() {
     if [ "$VERSION" = "latest" ]; then
-        VERSION=$(curl -fsSL "https://api.github.com/repos/$GITHUB_REPO/releases/latest" | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/')
+        LATEST_JSON="$(curl -fsSL "https://api.github.com/repos/$GITHUB_REPO/releases/latest")"
+        VERSION="$(printf '%s\n' "$LATEST_JSON" | sed -nE 's/.*"tag_name": *"v([^"]+)".*/\1/p')"
         if [ -z "$VERSION" ]; then
             error "Failed to fetch latest version"
         fi
@@ -76,12 +89,19 @@ get_latest_version() {
 download_binary() {
     DOWNLOAD_URL="$DOWNLOAD_BASE/download/v$VERSION/tokenuse_${VERSION}_${PLATFORM}.tar.gz"
     CHECKSUM_URL="$DOWNLOAD_BASE/download/v$VERSION/checksums.txt"
+    TMP_DIR=""
+
+    cleanup() {
+        if [ -n "${TMP_DIR:-}" ] && [ -d "$TMP_DIR" ]; then
+            rm -rf "$TMP_DIR"
+        fi
+    }
 
     info "Downloading from $DOWNLOAD_URL"
 
     # Create temp directory
-    TMP_DIR=$(mktemp -d)
-    trap "rm -rf $TMP_DIR" EXIT
+    TMP_DIR="$(mktemp -d)"
+    trap cleanup EXIT
 
     # Download tarball
     curl -fsSL "$DOWNLOAD_URL" -o "$TMP_DIR/tokenuse.tar.gz"
@@ -99,15 +119,16 @@ download_binary() {
             error "Could not download checksums for v$VERSION from $CHECKSUM_URL.\nRefusing to install an unverified binary. Set TOKENUSE_SKIP_CHECKSUM=1 to override (insecure)."
         fi
 
-        EXPECTED_CHECKSUM=$(grep "tokenuse_${VERSION}_${PLATFORM}.tar.gz" "$TMP_DIR/checksums.txt" | awk '{print $1}')
+        CHECKSUM_FILENAME="tokenuse_${VERSION}_${PLATFORM}.tar.gz"
+        EXPECTED_CHECKSUM="$(awk -v filename="$CHECKSUM_FILENAME" '$2 == filename { print $1 }' "$TMP_DIR/checksums.txt")"
         if [ -z "$EXPECTED_CHECKSUM" ]; then
-            error "No checksum entry for tokenuse_${VERSION}_${PLATFORM}.tar.gz in checksums.txt.\nRefusing to install an unverified binary. Set TOKENUSE_SKIP_CHECKSUM=1 to override (insecure)."
+            error "No checksum entry for $CHECKSUM_FILENAME in checksums.txt.\nRefusing to install an unverified binary. Set TOKENUSE_SKIP_CHECKSUM=1 to override (insecure)."
         fi
 
-        if command -v sha256sum &> /dev/null; then
-            ACTUAL_CHECKSUM=$(sha256sum "$TMP_DIR/tokenuse.tar.gz" | awk '{print $1}')
-        elif command -v shasum &> /dev/null; then
-            ACTUAL_CHECKSUM=$(shasum -a 256 "$TMP_DIR/tokenuse.tar.gz" | awk '{print $1}')
+        if command -v sha256sum >/dev/null 2>&1; then
+            ACTUAL_CHECKSUM="$(sha256sum "$TMP_DIR/tokenuse.tar.gz" | awk '{print $1}')"
+        elif command -v shasum >/dev/null 2>&1; then
+            ACTUAL_CHECKSUM="$(shasum -a 256 "$TMP_DIR/tokenuse.tar.gz" | awk '{print $1}')"
         else
             error "No sha256 tool (sha256sum/shasum) available to verify the download.\nRefusing to install an unverified binary. Set TOKENUSE_SKIP_CHECKSUM=1 to override (insecure)."
         fi
@@ -132,10 +153,14 @@ download_binary() {
 
 # Add to PATH if needed
 setup_path() {
-    if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
+    if [[ ":${PATH:-}:" != *":$INSTALL_DIR:"* ]]; then
         warn "$INSTALL_DIR is not in your PATH"
 
-        SHELL_NAME=$(basename "$SHELL")
+        if [ -n "${SHELL:-}" ]; then
+            SHELL_NAME="$(basename "$SHELL")"
+        else
+            SHELL_NAME=""
+        fi
         case "$SHELL_NAME" in
             bash)
                 RC_FILE="$HOME/.bashrc"
