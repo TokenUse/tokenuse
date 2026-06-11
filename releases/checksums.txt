@@ -1,4 +1,0 @@
-884e93ae0d2b47ae320296261e0edb427732dea0e95bd2f0c2d6c64d6e2fc041  tokenuse_0.2.1_darwin_amd64.tar.gz
-193c04412d63f3f7e37076c51055910ecab061692bdc88c28870325c97731f0f  tokenuse_0.2.1_darwin_arm64.tar.gz
-58a6f0bdc3d8dbf32e6534b3f93d2029dc447b27170a1a96cb3df98fbe4e9e51  tokenuse_0.2.1_linux_amd64.tar.gz
-3f8eedcb9b18513389c40a7cde9a185293a72156628ccfefdcea7ee6596ff586  tokenuse_0.2.1_linux_arm64.tar.gz
