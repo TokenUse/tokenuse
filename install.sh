@@ -2,7 +2,7 @@
 set -e
 
 # TokenUse CLI Installer
-# Usage: curl -fsSL https://get.tokenuse.ai | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/tokenuse/tokenuse/main/install.sh | bash
 
 VERSION="${TOKENUSE_VERSION:-latest}"
 INSTALL_DIR="${TOKENUSE_INSTALL_DIR:-$HOME/.local/bin}"
