@@ -87,4 +87,5 @@ Release notes are published at [TokenUse Releases](https://github.com/tokenuse/t
 ## Support
 
 - Website: [tokenuse.ai](https://tokenuse.ai)
+- Security: [SECURITY.md](SECURITY.md)
 - Email: support@tokenuse.ai
