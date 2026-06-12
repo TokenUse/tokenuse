@@ -1,6 +1,6 @@
 # TokenUse CLI
 
-Track and analyze Claude Code and Codex usage.
+Track and analyze Claude Code and OpenAI Codex usage and costs.
 
 ## Installation
 
@@ -25,6 +25,19 @@ tokenuse version
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/tokenuse/tokenuse/main/install.sh | bash
+```
+
+## Upgrade
+
+```bash
+# curl installs
+curl -fsSL https://raw.githubusercontent.com/tokenuse/tokenuse/main/install.sh | bash
+
+# Homebrew installs
+brew upgrade tokenuse
+
+# npm installs
+npm install -g tokenuse@latest
 ```
 
 ## Usage
@@ -65,7 +78,9 @@ TokenUse tracks usage metadata and, **on by default**, the text of the prompts y
 
 ## Documentation
 
-Visit the [documentation](https://github.com/tokenuse/tokenuse-cli#readme) for full details.
+Visit the [documentation](https://tokenuse.ai/docs) for full details.
+
+Release notes are published at [TokenUse Releases](https://github.com/tokenuse/tokenuse/releases).
 
 ## Support
 
