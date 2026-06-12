@@ -211,6 +211,7 @@ main() {
     echo "    tokenuse status   # Check tracking status"
     echo ""
     echo "  View your dashboard at https://app.tokenuse.ai"
+    echo "  Privacy: TokenUse collects usage metadata and, by default, prompts. https://www.tokenuse.ai/trust"
     echo ""
 }
 
