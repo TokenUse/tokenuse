@@ -63,6 +63,8 @@ tokenuse uninstall
 
 This stops and removes the background tracker service, removes the managed daemon binary, and asks whether to delete local TokenUse data such as config, credentials, queued events, prompts, cursors, cache, and logs. Use `tokenuse uninstall --purge` to remove local data without prompting, or `tokenuse uninstall --keep-data` to stop the tracker while keeping local data.
 
+If your installed version does not have `tokenuse uninstall`, run `tokenuse logout` first and type `delete` when prompted, then remove the package with brew, npm, or your install method.
+
 Manual fallback paths:
 
 - `~/Library/LaunchAgents/ai.tokenuse.tracker.plist` on macOS
