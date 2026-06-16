@@ -7,6 +7,22 @@ set -euo pipefail
 GITHUB_REPO="tokenuse/tokenuse"
 DOWNLOAD_BASE="https://github.com/$GITHUB_REPO/releases"
 VERSION="${TOKENUSE_VERSION:-latest}"
+
+# Second trust domain (W1-REL-3 / CISO-02): a mirror of the checksum manifest and
+# the minisign public key, served from a different repo/origin than the release
+# assets (raw.githubusercontent.com vs the release download host). The installer
+# cross-checks the primary checksums against this copy so an attacker who can swap
+# release assets cannot also forge the verifying anchor. Override for testing.
+MIRROR_BASE="${TOKENUSE_MIRROR_BASE:-https://raw.githubusercontent.com/tokenuse/tokenuse-releases/main}"
+
+# Committed minisign (Ed25519) public key used to verify SHA256SUMS.minisig.
+# CARRIED: until the real release-signing key is published, this is a placeholder.
+# While it equals the placeholder the installer cannot verify signatures and will
+# WARN-and-skip (verify-when-available). Once a real key is set here, a present-but-
+# invalid signature is FATAL. Replace the value below with the published key line:
+#   minisign public key: <KEYID>
+#   RWQ...base64...
+MINISIGN_PUBKEY="REPLACE_WITH_PUBLISHED_KEY"
 if [ -n "${TOKENUSE_INSTALL_DIR:-}" ]; then
     INSTALL_DIR="$TOKENUSE_INSTALL_DIR"
 else
@@ -137,6 +153,49 @@ download_binary() {
             error "Checksum verification failed!\nExpected: $EXPECTED_CHECKSUM\nActual: $ACTUAL_CHECKSUM"
         fi
         info "Checksum verified"
+
+        # --- Cross-domain checksum verification (W1-REL-3 / CISO-02) ---
+        # Fetch SHA256SUMS from the second trust domain and compare byte-for-byte
+        # against the primary release copy. A divergence means the two independent
+        # publish paths disagree -> treat as tamper and abort. Skip-with-warning
+        # only when the mirror is unreachable AND no real signing key is configured
+        # (the mirror is not yet populated before go-live).
+        MIRROR_URL="$MIRROR_BASE/v$VERSION/SHA256SUMS"
+        if curl -fsSL "$MIRROR_URL" -o "$TMP_DIR/checksums.mirror.txt" 2>/dev/null; then
+            if cmp -s "$TMP_DIR/checksums.txt" "$TMP_DIR/checksums.mirror.txt"; then
+                info "Second-domain checksums match ($MIRROR_BASE)"
+            else
+                error "Checksums on the second trust domain do not match the release copy.\nPrimary: $CHECKSUM_URL\nMirror:  $MIRROR_URL\nRefusing to install a possibly tampered binary."
+            fi
+        elif [ "$MINISIGN_PUBKEY" != "REPLACE_WITH_PUBLISHED_KEY" ]; then
+            error "Could not fetch second-domain checksums from $MIRROR_URL while a signing key is configured.\nRefusing to install without the out-of-band anchor. Set TOKENUSE_SKIP_CHECKSUM=1 to override (insecure)."
+        else
+            warn "Second-domain checksum mirror unreachable ($MIRROR_URL); skipping cross-check (no signing key configured yet)."
+        fi
+
+        # --- minisign signature verification (W1-REL-3 / CISO-02) ---
+        # Verify SHA256SUMS.minisig against the committed public key. Verify-when-
+        # available: if minisign is missing or no signature is published, warn and
+        # continue (checksum + cross-domain check still applied). But once a real
+        # public key is set here AND a signature is present, a verification failure
+        # is FATAL (fail-closed on tamper).
+        SIG_URL="$DOWNLOAD_BASE/download/v$VERSION/SHA256SUMS.minisig"
+        if [ "$MINISIGN_PUBKEY" = "REPLACE_WITH_PUBLISHED_KEY" ]; then
+            warn "minisign public key not yet published in installer; skipping signature verification (verify-when-available)."
+        elif ! command -v minisign >/dev/null 2>&1; then
+            warn "minisign not installed; skipping signature verification. Install minisign to verify the release signature (recommended)."
+        elif ! curl -fsSL "$SIG_URL" -o "$TMP_DIR/SHA256SUMS.minisig" 2>/dev/null; then
+            error "Signing key is configured but no signature ($SIG_URL) was found for v$VERSION.\nRefusing to install an unsigned binary. Set TOKENUSE_SKIP_CHECKSUM=1 to override (insecure)."
+        else
+            info "Verifying minisign signature..."
+            if minisign -V -P "$MINISIGN_PUBKEY" \
+                -m "$TMP_DIR/checksums.txt" \
+                -x "$TMP_DIR/SHA256SUMS.minisig" >/dev/null 2>&1; then
+                info "Signature verified"
+            else
+                error "minisign signature verification failed for SHA256SUMS.\nRefusing to install a possibly tampered binary."
+            fi
+        fi
     fi
 
     # Extract
