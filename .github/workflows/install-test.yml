@@ -48,6 +48,7 @@ jobs:
 
       - name: Install TokenUse
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           TOKENUSE_INSTALL_DIR: ${{ runner.temp }}/tokenuse-bin
         run: bash install.sh
 

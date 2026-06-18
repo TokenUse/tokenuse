@@ -92,7 +92,23 @@ detect_platform() {
 # Get the latest version from GitHub
 get_latest_version() {
     if [ "$VERSION" = "latest" ]; then
-        LATEST_JSON="$(curl -fsSL "https://api.github.com/repos/$GITHUB_REPO/releases/latest")"
+        if [ -n "${GITHUB_TOKEN:-}" ]; then
+            LATEST_JSON="$(curl --fail --silent --show-error --location \
+                --retry 3 --retry-delay 2 --retry-all-errors \
+                -H "Authorization: Bearer $GITHUB_TOKEN" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                "https://api.github.com/repos/$GITHUB_REPO/releases/latest")"
+        elif [ -n "${GH_TOKEN:-}" ]; then
+            LATEST_JSON="$(curl --fail --silent --show-error --location \
+                --retry 3 --retry-delay 2 --retry-all-errors \
+                -H "Authorization: Bearer $GH_TOKEN" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                "https://api.github.com/repos/$GITHUB_REPO/releases/latest")"
+        else
+            LATEST_JSON="$(curl --fail --silent --show-error --location \
+                --retry 3 --retry-delay 2 --retry-all-errors \
+                "https://api.github.com/repos/$GITHUB_REPO/releases/latest")"
+        fi
         VERSION="$(printf '%s\n' "$LATEST_JSON" | sed -nE 's/.*"tag_name": *"v([^"]+)".*/\1/p')"
         if [ -z "$VERSION" ]; then
             error "Failed to fetch latest version"
