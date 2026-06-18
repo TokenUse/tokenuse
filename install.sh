@@ -119,8 +119,15 @@ download_binary() {
     TMP_DIR="$(mktemp -d)"
     trap cleanup EXIT
 
-    # Download tarball
-    curl -fsSL "$DOWNLOAD_URL" -o "$TMP_DIR/tokenuse.tar.gz"
+    curl_download() {
+        curl --fail --silent --show-error --location \
+            --retry 3 --retry-delay 2 --retry-all-errors \
+            "$1" -o "$2"
+    }
+
+    # Download tarball. GitHub release assets redirect through short-lived signed
+    # URLs, and hosted runners occasionally see transient 403/56 failures there.
+    curl_download "$DOWNLOAD_URL" "$TMP_DIR/tokenuse.tar.gz"
 
     # Verify checksum (fail-closed: any failure aborts the install, mirroring the
     # npm installer). Escape hatch for offline/dev only: set TOKENUSE_SKIP_CHECKSUM=1
@@ -131,7 +138,7 @@ download_binary() {
         info "Verifying checksum..."
 
         # A missing/unreachable checksums file must abort — never install unverified.
-        if ! curl -fsSL "$CHECKSUM_URL" -o "$TMP_DIR/checksums.txt"; then
+        if ! curl_download "$CHECKSUM_URL" "$TMP_DIR/checksums.txt"; then
             error "Could not download checksums for v$VERSION from $CHECKSUM_URL.\nRefusing to install an unverified binary. Set TOKENUSE_SKIP_CHECKSUM=1 to override (insecure)."
         fi
 
@@ -161,7 +168,7 @@ download_binary() {
         # only when the mirror is unreachable AND no real signing key is configured
         # (the mirror is not yet populated before go-live).
         MIRROR_URL="$MIRROR_BASE/v$VERSION/SHA256SUMS"
-        if curl -fsSL "$MIRROR_URL" -o "$TMP_DIR/checksums.mirror.txt" 2>/dev/null; then
+        if curl_download "$MIRROR_URL" "$TMP_DIR/checksums.mirror.txt" 2>/dev/null; then
             if cmp -s "$TMP_DIR/checksums.txt" "$TMP_DIR/checksums.mirror.txt"; then
                 info "Second-domain checksums match ($MIRROR_BASE)"
             else
@@ -184,7 +191,7 @@ download_binary() {
             warn "minisign public key not yet published in installer; skipping signature verification (verify-when-available)."
         elif ! command -v minisign >/dev/null 2>&1; then
             warn "minisign not installed; skipping signature verification. Install minisign to verify the release signature (recommended)."
-        elif ! curl -fsSL "$SIG_URL" -o "$TMP_DIR/SHA256SUMS.minisig" 2>/dev/null; then
+        elif ! curl_download "$SIG_URL" "$TMP_DIR/SHA256SUMS.minisig" 2>/dev/null; then
             error "Signing key is configured but no signature ($SIG_URL) was found for v$VERSION.\nRefusing to install an unsigned binary. Set TOKENUSE_SKIP_CHECKSUM=1 to override (insecure)."
         else
             info "Verifying minisign signature..."
