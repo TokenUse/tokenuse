@@ -1,0 +1,56 @@
+name: Install Test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17 9 * * 1'
+
+jobs:
+  shellcheck:
+    name: Shellcheck installer
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Syntax check
+        run: bash -n install.sh
+
+      - name: Install ShellCheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+
+      - name: Shellcheck
+        run: shellcheck install.sh
+
+  install:
+    name: Install latest release
+    needs: shellcheck
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Runner platform
+        run: uname -s
+
+      - name: Install TokenUse
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TOKENUSE_INSTALL_DIR: ${{ runner.temp }}/tokenuse-bin
+        run: bash install.sh
+
+      - name: Verify TokenUse
+        run: '"${RUNNER_TEMP}/tokenuse-bin/tokenuse" version'

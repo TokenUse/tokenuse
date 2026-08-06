@@ -1,0 +1,50 @@
+name: Bug report
+description: Report a problem with install scripts, release assets, or distribution docs.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Do not include tokens, secrets, prompt text, transcripts, or private paths.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the install or release-asset problem.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: Install method
+      options:
+        - curl installer
+        - GitHub release asset
+        - Homebrew
+        - npm/npx
+        - other
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system and architecture
+      placeholder: "macOS 15 arm64, Ubuntu 24.04 x64"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Redacted output
+      description: Paste only redacted command output. Remove tokens, secrets, prompt text, transcripts, and private paths.
+      render: shell
+    validations:
+      required: false
